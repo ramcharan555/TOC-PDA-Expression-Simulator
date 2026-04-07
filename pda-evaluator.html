@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDA Expression Evaluator — Stack Visualizer</title>
+<style>
+/* ─── Imports ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+/* ─── Variables ───────────────────────────────────── */
+:root {
+  --bg:       #0a0d14;
+  --bg2:      #111520;
+  --bg3:      #181d2a;
+  --bg4:      #1e2435;
+  --border:   #2a3148;
+  --border2:  #3a4460;
+  --text:     #e2e8f8;
+  --text2:    #8b95b0;
+  --text3:    #5a6480;
+  --blue:     #4d9fff;
+  --blue-dim: #1a3060;
+  --blue-bg:  #0d1f40;
+  --amber:    #f0a830;
+  --amber-dim:#3d2800;
+  --green:    #3dcc7e;
+  --green-dim:#0d3320;
+  --red:      #ff5566;
+  --red-dim:  #3d0d12;
+  --purple:   #a78bfa;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Space Grotesk', sans-serif;
+}
+
+/* ─── Reset ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ───────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ─── Header ──────────────────────────────────────── */
+header {
+  background: linear-gradient(135deg, #0d1520 0%, #111827 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 1.1rem; font-weight: 600; color: var(--text);
+  line-height: 1.2;
+}
+header p { font-size: 0.75rem; color: var(--text3); }
+.badge {
+  margin-left: auto;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ─── Layout ──────────────────────────────────────── */
+.main { max-width: 980px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; }
+
+/* ─── Card ────────────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.card-title {
+  font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text3); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px; height: 14px;
+  border-radius: 2px;
+}
+.card-title.p1::before { background: var(--blue); }
+.card-title.p2::before { background: var(--green); }
+.card-title.inp::before { background: var(--purple); }
+.card-title.log::before { background: var(--amber); }
+.card-title.out::before { background: var(--green); }
+.card-title.prec::before { background: var(--text3); }
+
+/* ─── Examples ────────────────────────────────────── */
+.examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+.ex-btn {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 5px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .18s;
+}
+.ex-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-bg);
+}
+
+/* ─── Input row ───────────────────────────────────── */
+.input-row {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+}
+#expr-input {
+  flex: 1; min-width: 200px;
+  font-family: var(--mono);
+  font-size: 1rem;
+  padding: 10px 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+#expr-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(77,159,255,.12); }
+#expr-input::placeholder { color: var(--text3); }
+
+/* ─── Buttons ─────────────────────────────────────── */
+.btn {
+  font-family: var(--sans);
+  font-size: 0.85rem; font-weight: 500;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+.btn.primary {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+.btn.primary:hover { background: #5daaff; border-color: #5daaff; }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: var(--red-dim); }
+
+/* ─── Speed ───────────────────────────────────────── */
+.speed-row {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: .9rem;
+  font-size: 0.8rem; color: var(--text3);
+}
+.speed-row input[type=range] {
+  -webkit-appearance: none;
+  width: 100px; height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+}
+.speed-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--blue);
+  cursor: pointer;
+}
+#speed-label { color: var(--blue); font-weight: 600; min-width: 50px; }
+
+/* ─── Phase banner ────────────────────────────────── */
+.phase-banner {
+  font-size: 0.82rem;
+  color: var(--text2);
+  min-height: 28px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: .5rem;
+  padding: 0 4px;
+}
+.phase-tag {
+  font-size: 0.68rem; font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 12px;
+  text-transform: uppercase; letter-spacing: .06em;
+  flex-shrink: 0;
+}
+.phase-tag.p1 { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+.phase-tag.p2 { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+
+/* ─── Token stream ────────────────────────────────── */
+.token-row {
+  display: flex; flex-wrap: wrap;
+  gap: 8px; min-height: 40px;
+  align-items: center;
+}
+.token {
+  font-family: var(--mono);
+  padding: 5px 13px;
+  border-radius: 22px;
+  font-size: 0.9rem; font-weight: 600;
+  border: 1px solid transparent;
+  transition: all .25s cubic-bezier(.34,1.56,.64,1);
+  cursor: default;
+}
+.token.pending { background: var(--bg3); color: var(--text3); border-color: var(--border); }
+.token.active {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-color: var(--amber);
+  transform: scale(1.12);
+  box-shadow: 0 0 14px rgba(240,168,48,.3);
+}
+.token.done { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+
+/* ─── Two-col grid ────────────────────────────────── */
+.viz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 640px) { .viz-grid { grid-template-columns: 1fr; } }
+
+/* ─── Stack visualization ─────────────────────────── */
+.stack-area { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.stack-top-indicator {
+  font-size: 0.65rem; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .1em;
+  align-self: flex-start; padding-left: 4px;
+}
+.stack-box {
+  width: 100%;
+  min-height: 190px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 8px;
+  gap: 5px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .3s;
+}
+.stack-box.error-flash { border-color: var(--red) !important; box-shadow: 0 0 18px rgba(255,85,102,.2); }
+.stack-empty {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 0.75rem; color: var(--text3);
+  font-family: var(--mono);
+  pointer-events: none;
+}
+.stack-el {
+  width: 85%;
+  text-align: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 0.9rem; font-weight: 600;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid #2a4880;
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  animation: elPop .25s cubic-bezier(.34,1.56,.64,1);
+}
+.stack-el.active {
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-color: var(--amber);
+  box-shadow: 0 0 12px rgba(240,168,48,.25);
+  transform: scale(1.07);
+}
+.stack-el.result {
+  background: var(--green-dim);
+  color: var(--green);
+  border-color: var(--green);
+  box-shadow: 0 0 16px rgba(61,204,126,.25);
+}
+@keyframes elPop {
+  from { opacity: 0; transform: translateY(10px) scale(.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Stack label ─────────────────────────────────── */
+.stack-sublabel {
+  font-size: 0.68rem; color: var(--text3);
+  text-align: center; margin-top: 2px;
+}
+
+/* ─── Postfix output ──────────────────────────────── */
+.postfix-wrap {
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--border);
+}
+.postfix-label { font-size: 0.68rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing:.08em; margin-bottom: 6px; }
+.postfix-tokens { display: flex; flex-wrap: wrap; gap: 5px; min-height: 30px; align-items: center; }
+.p-token {
+  font-family: var(--mono);
+  font-size: 0.82rem; font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid #2a4880;
+  animation: elPop .2s ease;
+}
+
+/* ─── Calc display ────────────────────────────────── */
+.calc-display {
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--border);
+  min-height: 36px;
+  font-family: var(--mono);
+  font-size: 0.88rem; font-weight: 600;
+  color: var(--amber);
+}
+.calc-label { font-size: 0.68rem; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing:.08em; margin-bottom: 4px; font-family: var(--sans); }
+
+/* ─── Log ─────────────────────────────────────────── */
+.log-box {
+  max-height: 160px; overflow-y: auto;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: var(--mono);
+  font-size: 0.78rem; line-height: 1.7;
+  color: var(--text3);
+}
+.log-entry { padding: 1px 0; }
+.log-entry.hi { color: var(--text); }
+.log-entry.p1 { border-left: 2px solid var(--blue); padding-left: 8px; margin-left: -8px; color: var(--text2); }
+.log-entry.p2 { border-left: 2px solid var(--green); padding-left: 8px; margin-left: -8px; color: var(--text2); }
+.log-entry.err { color: var(--red); }
+
+/* ─── Precedence table ────────────────────────────── */
+.prec-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.prec-table tr { border-bottom: 1px solid var(--border); }
+.prec-table tr:last-child { border-bottom: none; }
+.prec-table td { padding: 7px 8px; }
+.prec-table td:first-child {
+  font-family: var(--mono); font-weight: 700;
+  color: var(--amber); width: 60px; text-align: center;
+}
+.prec-table td:last-child { color: var(--text2); }
+.prec-note { margin-top: .75rem; font-size: 0.76rem; color: var(--text3); line-height: 1.5; }
+
+/* ─── Output ──────────────────────────────────────── */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 16px;
+  border-radius: 22px;
+  font-size: 0.82rem; font-weight: 600;
+  margin-bottom: .9rem;
+}
+.status-badge.waiting { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+.status-badge.running { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); }
+.status-badge.accepted { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+.status-badge.error { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.dot.pulse { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+@media (max-width: 480px) { .result-grid { grid-template-columns: 1fr; } }
+.res-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+}
+.res-card .lbl { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing:.08em; color: var(--text3); margin-bottom: 5px; }
+.res-card .val {
+  font-family: var(--mono);
+  font-size: 1.4rem; font-weight: 700;
+  color: var(--text);
+  word-break: break-all;
+}
+.res-card .val.postfix-val { font-size: 0.92rem; }
+
+/* ─── PDA info box ────────────────────────────────── */
+.pda-info {
+  background: linear-gradient(135deg, #0d1830 0%, #0a1525 100%);
+  border: 1px solid var(--blue-dim);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.pda-info h3 { font-size: 0.85rem; font-weight: 600; color: var(--blue); margin-bottom: .5rem; }
+.pda-info p { font-size: 0.8rem; color: var(--text2); line-height: 1.6; }
+.pda-info .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem; margin-top: .9rem; }
+.pda-step {
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-dim);
+  border-radius: 8px; padding: .6rem .9rem;
+}
+.pda-step .num { font-size: 0.65rem; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing:.08em; }
+.pda-step .desc { font-size: 0.78rem; color: var(--text2); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────── -->
+<header>
+  <div class="logo-icon">∑</div>
+  <div>
+    <h1>PDA Expression Evaluator</h1>
+    <p>Pushdown Automata · Stack Visualization · Theory of Computation</p>
+  </div>
+  <div class="badge">ToC Assignment</div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- PDA info -->
+  <div class="pda-info">
+    <h3>Why a Pushdown Automaton (PDA)?</h3>
+    <p>Regular finite automata cannot handle nested parentheses — they have no memory. A PDA adds a <strong>stack</strong>, giving it infinite memory for the current nesting depth. This makes it powerful enough to recognize all context-free languages, including valid arithmetic expressions.</p>
+    <div class="steps">
+      <div class="pda-step"><div class="num">Phase 1</div><div class="desc">Shunting Yard: operator stack resolves precedence &amp; parentheses</div></div>
+      <div class="pda-step"><div class="num">Phase 2</div><div class="desc">Postfix eval: operand stack computes result token by token</div></div>
+      <div class="pda-step"><div class="num">Stack = PDA</div><div class="desc">Every push/pop is a PDA transition on the stack alphabet</div></div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <div class="card-title inp">Expression Input</div>
+    <div style="font-size:0.75rem;color:var(--text3);margin-bottom:8px">Preloaded examples</div>
+    <div class="examples">
+      <button class="ex-btn" onclick="setExpr('(5+3)*2')">(5+3)*2</button>
+      <button class="ex-btn" onclick="setExpr('(2+3)*(4-1)')">(2+3)*(4-1)</button>
+      <button class="ex-btn" onclick="setExpr('3+4*2/(1-5)')">3+4*2/(1-5)</button>
+      <button class="ex-btn" onclick="setExpr('2^3+1')">2^3+1</button>
+      <button class="ex-btn" onclick="setExpr('(10-2)*3/4')">(10-2)*3/4</button>
+      <button class="ex-btn" onclick="setExpr('((2+3)*4-1)/3')">((2+3)*4-1)/3</button>
+    </div>
+    <div class="input-row">
+      <input id="expr-input" type="text" placeholder="Enter expression e.g. (5+3)*2" value="(5+3)*2"
+        onkeydown="if(event.key==='Enter')startSim()">
+      <button class="btn primary" onclick="startSim()">▶ Start</button>
+      <button class="btn" id="step-btn" onclick="stepOnce()" disabled>Step ›</button>
+      <button class="btn" id="pause-btn" onclick="togglePause()" disabled>Pause</button>
+      <button class="btn danger" onclick="resetAll()">↺ Reset</button>
+    </div>
+    <div class="speed-row">
+      <span>Speed</span>
+      <input type="range" id="speed-slider" min="1" max="3" step="1" value="2"
+        oninput="document.getElementById('speed-label').textContent=['','Slow','Medium','Fast'][this.value]">
+      <span id="speed-label">Medium</span>
+    </div>
+  </div>
+
+  <!-- Phase banner -->
+  <div class="phase-banner" id="phase-banner"></div>
+
+  <!-- Token stream -->
+  <div class="card">
+    <div class="card-title inp">Token Stream</div>
+    <div class="token-row" id="token-row">
+      <span style="font-size:0.8rem;color:var(--text3);font-family:var(--mono)">Tokens will appear here after starting…</span>
+    </div>
+  </div>
+
+  <!-- Stacks -->
+  <div class="viz-grid">
+
+    <!-- Operator stack / postfix -->
+    <div class="card">
+      <div class="card-title p1">Operator Stack — Phase 1</div>
+      <div class="stack-area">
+        <div class="stack-top-indicator">▲ TOP</div>
+        <div class="stack-box" id="op-stack">
+          <span class="stack-empty">[ empty ]</span>
+        </div>
+        <div class="stack-sublabel">Operators &amp; parentheses live here</div>
+      </div>
+      <div class="postfix-wrap">
+        <div class="postfix-label">Postfix output building…</div>
+        <div class="postfix-tokens" id="postfix-out">
+          <span style="font-size:0.76rem;color:var(--text3)">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eval stack / calc -->
+    <div class="card">
+      <div class="card-title p2">Evaluation Stack — Phase 2</div>
+      <div class="stack-area">
+        <div class="stack-top-indicator">▲ TOP</div>
+        <div class="stack-box" id="eval-stack">
+          <span class="stack-empty">[ empty ]</span>
+        </div>
+        <div class="stack-sublabel">Numbers accumulate here</div>
+      </div>
+      <div class="calc-display">
+        <div class="calc-label">Current calculation</div>
+        <div id="calc-display">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-title log">Step-by-Step Log</div>
+    <div class="log-box" id="log-box">
+      <span style="color:var(--text3)">Log will appear here…</span>
+    </div>
+  </div>
+
+  <!-- Precedence reference -->
+  <div class="card">
+    <div class="card-title prec">Operator Precedence Rules</div>
+    <table class="prec-table">
+      <tr><td>^</td><td>Exponentiation — highest precedence (right-associative)</td></tr>
+      <tr><td>* /</td><td>Multiplication &amp; division — medium precedence</td></tr>
+      <tr><td>+ −</td><td>Addition &amp; subtraction — lowest precedence</td></tr>
+      <tr><td>( )</td><td>Parentheses — force grouping, not treated as operators</td></tr>
+    </table>
+    <p class="prec-note">
+      The stack ensures higher-precedence operators are output (and thus evaluated) before lower-precedence ones — 
+      without writing any explicit comparisons in the grammar. This is the PDA's power: the stack <em>encodes</em> 
+      the precedence structure implicitly.
+    </p>
+  </div>
+
+  <!-- Output -->
+  <div class="card" id="output-card">
+    <div class="card-title out">Result</div>
+    <div class="status-badge waiting" id="status-badge">
+      <span class="dot"></span>Waiting for input
+    </div>
+    <div class="result-grid">
+      <div class="res-card">
+        <div class="lbl">Postfix expression</div>
+        <div class="val postfix-val" id="res-postfix">—</div>
+      </div>
+      <div class="res-card">
+        <div class="lbl">Final result</div>
+        <div class="val" id="res-val">—</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── JavaScript ───────────────────────────────────── -->
+<script>
+// ════════════════════════════════════════════════════
+//  CONSTANTS & STATE
+// ════════════════════════════════════════════════════
+const PREC    = {'+':1,'-':1,'*':2,'/':2,'^':3};
+const RIGHT   = new Set(['^']);
+const SPEEDMS = {1:900, 2:420, 3:130};
+
+let allSteps   = [];
+let stepIdx    = 0;
+let running    = false;
+let paused     = false;
+let done       = false;
+let autoTimer  = null;
+
+let phase1Tokens = [];  // infix tokens
+let phase2Tokens = [];  // postfix tokens
+let finalPostfix = [];
+let finalResult  = null;
+
+// ════════════════════════════════════════════════════
+//  TOKENIZER
+// ════════════════════════════════════════════════════
+function tokenize(expr) {
+  const tokens = [];
+  const e = expr.replace(/\s+/g, '');
+  if (!e) throw new Error('Empty expression');
+  let i = 0;
+  while (i < e.length) {
+    if (/[0-9]/.test(e[i])) {
+      let n = '';
+      while (i < e.length && /[0-9]/.test(e[i])) n += e[i++];
+      tokens.push(n);
+    } else if (e[i] in PREC || e[i]==='(' || e[i]===')') {
+      tokens.push(e[i++]);
+    } else {
+      throw new Error(`Invalid character '${e[i]}' at position ${i+1}`);
+    }
+  }
+  return tokens;
+}
+
+// ════════════════════════════════════════════════════
+//  PHASE 1 — SHUNTING YARD (generates steps array)
+// ════════════════════════════════════════════════════
+function buildPhase1(tokens) {
+  const steps   = [];
+  const opStack = [];
+  const output  = [];
+
+  const snap = (tok, idx, log, action) => ({
+    phase: 1, token: tok, tokenIdx: idx,
+    opStack: [...opStack], output: [...output],
+    log, action
+  });
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+
+    if (!isNaN(tok)) {
+      // Number → output immediately
+      output.push(tok);
+      steps.push(snap(tok, i, `Number ${tok} → sent directly to postfix output`, 'num'));
+
+    } else if (tok === '(') {
+      opStack.push(tok);
+      steps.push(snap(tok, i, `'(' pushed onto operator stack as a barrier`, 'push_paren'));
+
+    } else if (tok === ')') {
+      // Pop until matching '('
+      while (opStack.length && opStack[opStack.length-1] !== '(') {
+        const popped = opStack.pop();
+        output.push(popped);
+        steps.push(snap(tok, i, `Popping '${popped}' from stack → postfix output (unwind for ')')`, 'pop_to_out'));
+      }
+      if (!opStack.length) throw new Error('Mismatched parentheses — found ) without matching (');
+      opStack.pop(); // discard '('
+      steps.push(snap(tok, i, `Discarding matching '(' from stack`, 'pop_paren'));
+
+    } else if (tok in PREC) {
+      // Operator: pop higher/equal precedence (unless right-assoc) first
+      while (
+        opStack.length &&
+        opStack[opStack.length-1] !== '(' &&
+        (PREC[opStack[opStack.length-1]] > PREC[tok] ||
+         (PREC[opStack[opStack.length-1]] === PREC[tok] && !RIGHT.has(tok)))
+      ) {
+        const popped = opStack.pop();
+        output.push(popped);
+        steps.push(snap(tok, i, `Popping '${popped}' (higher/equal precedence) → output before pushing '${tok}'`, 'pop_prec'));
+      }
+      opStack.push(tok);
+      steps.push(snap(tok, i, `Operator '${tok}' pushed onto stack`, 'push_op'));
+    }
+  }
+
+  // Flush remaining operators
+  while (opStack.length) {
+    const top = opStack[opStack.length-1];
+    if (top === '(' || top === ')') throw new Error('Mismatched parentheses — missing )');
+    opStack.pop();
+    output.push(top);
+    steps.push({
+      phase:1, token:null, tokenIdx:tokens.length,
+      opStack:[...opStack], output:[...output],
+      log: `Flushing '${top}' from stack → postfix output (end of input)`,
+      action: 'flush'
+    });
+  }
+
+  return { steps, postfix: [...output] };
+}
+
+// ════════════════════════════════════════════════════
+//  PHASE 2 — POSTFIX EVALUATION
+// ════════════════════════════════════════════════════
+function buildPhase2(postfix) {
+  const steps   = [];
+  const evalSt  = [];
+
+  const snap = (tok, idx, log, action, calc='') => ({
+    phase:2, token:tok, tokenIdx:idx,
+    evalStack:[...evalSt], log, action, calc
+  });
+
+  for (let i = 0; i < postfix.length; i++) {
+    const tok = postfix[i];
+
+    if (!isNaN(tok)) {
+      evalSt.push(Number(tok));
+      steps.push(snap(tok, i, `Number ${tok} pushed onto evaluation stack`, 'push_num'));
+    } else {
+      if (evalSt.length < 2) throw new Error('Invalid expression — not enough operands for operator');
+      const b = evalSt.pop();
+      const a = evalSt.pop();
+      let res;
+      if (tok==='+') res = a+b;
+      else if (tok==='-') res = a-b;
+      else if (tok==='*') res = a*b;
+      else if (tok==='/') {
+        if (b===0) throw new Error('Division by zero');
+        res = a/b;
+      }
+      else if (tok==='^') res = Math.pow(a,b);
+      evalSt.push(res);
+      const calc = `${a} ${tok} ${b} = ${+res.toFixed(8)}`;
+      steps.push(snap(tok, i, `Pop ${a}, ${b} → compute ${calc} → push result`, 'compute', calc));
+    }
+  }
+
+  if (evalSt.length !== 1) throw new Error('Invalid expression — too many operands');
+  return { steps, result: evalSt[0] };
+}
+
+// ════════════════════════════════════════════════════
+//  DOM RENDERING
+// ════════════════════════════════════════════════════
+function renderStack(id, arr, highlightTop=false, resultMode=false) {
+  const box = document.getElementById(id);
+  box.innerHTML = '';
+  if (!arr.length) {
+    const e = document.createElement('span');
+    e.className = 'stack-empty'; e.textContent = '[ empty ]';
+    box.appendChild(e);
+    return;
+  }
+  // Render from bottom (index 0) → rendered first (flex-direction:column-reverse → visually at bottom)
+  arr.forEach((el, i) => {
+    const d = document.createElement('div');
+    const isTop = i === arr.length - 1;
+    if (resultMode && isTop) d.className = 'stack-el result';
+    else if (highlightTop && isTop) d.className = 'stack-el active';
+    else d.className = 'stack-el';
+    d.textContent = typeof el === 'number' ? +el.toFixed(6) : el;
+    box.appendChild(d);
+  });
+}
+
+function renderTokens(tokens, activeIdx, doneCount) {
+  const row = document.getElementById('token-row');
+  row.innerHTML = '';
+  tokens.forEach((t, i) => {
+    const d = document.createElement('span');
+    if (i === activeIdx) d.className = 'token active';
+    else if (i < doneCount) d.className = 'token done';
+    else d.className = 'token pending';
+    d.textContent = t;
+    row.appendChild(d);
+  });
+}
+
+function renderPostfix(arr) {
+  const box = document.getElementById('postfix-out');
+  box.innerHTML = '';
+  if (!arr.length) {
+    box.innerHTML = '<span style="font-size:0.76rem;color:var(--text3)">—</span>';
+    return;
+  }
+  arr.forEach(t => {
+    const s = document.createElement('span');
+    s.className = 'p-token'; s.textContent = t;
+    box.appendChild(s);
+  });
+}
+
+function addLog(msg, cls='') {
+  const box = document.getElementById('log-box');
+  if (box.querySelector('.placeholder')) box.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'log-entry ' + cls;
+  d.textContent = msg;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setStatus(text, type='waiting') {
+  const b = document.getElementById('status-badge');
+  b.className = 'status-badge ' + type;
+  const pulse = type === 'running' ? ' pulse' : '';
+  b.innerHTML = `<span class="dot${pulse}"></span>${text}`;
+}
+
+function setPhase(ph) {
+  const b = document.getElementById('phase-banner');
+  if (ph===1) b.innerHTML = '<span class="phase-tag p1">Phase 1</span> Converting infix → postfix using the Shunting Yard algorithm';
+  else if (ph===2) b.innerHTML = '<span class="phase-tag p2">Phase 2</span> Evaluating postfix expression with operand stack';
+  else b.innerHTML = '';
+}
+
+function flashError() {
+  ['op-stack','eval-stack'].forEach(id => {
+    const b = document.getElementById(id);
+    b.classList.add('error-flash');
+    setTimeout(()=>b.classList.remove('error-flash'), 1800);
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  SIMULATION CONTROL
+// ════════════════════════════════════════════════════
+function startSim() {
+  resetAll(false);
+  const expr = document.getElementById('expr-input').value.trim();
+  if (!expr) { setStatus('Error: empty expression', 'error'); return; }
+
+  try {
+    const tokens = tokenize(expr);
+    const { steps: p1, postfix } = buildPhase1(tokens);
+    const { steps: p2, result  } = buildPhase2(postfix);
+
+    phase1Tokens = tokens;
+    phase2Tokens = postfix;
+    finalPostfix  = postfix;
+    finalResult   = result;
+    allSteps = [...p1, ...p2];
+    stepIdx = 0; done = false; running = true; paused = false;
+
+    document.getElementById('step-btn').disabled  = false;
+    document.getElementById('pause-btn').disabled = false;
+
+    renderTokens(phase1Tokens, -1, 0);
+    setStatus('Running…', 'running');
+    document.getElementById('log-box').innerHTML = '';
+    addLog(`▶ Simulation started for: ${expr}`, 'hi');
+
+    scheduleNext();
+  } catch(err) {
+    setStatus('Error: ' + err.message, 'error');
+    addLog('✕ ' + err.message, 'err');
+    flashError();
+  }
+}
+
+function scheduleNext() {
+  if (autoTimer) clearTimeout(autoTimer);
+  const spd = parseInt(document.getElementById('speed-slider').value) || 2;
+  autoTimer = setTimeout(() => {
+    if (!paused && running && !done) stepOnce(true);
+  }, SPEEDMS[spd] || 420);
+}
+
+function stepOnce() {
+  if (done) return;
+  if (stepIdx >= allSteps.length) { finishSim(); return; }
+  applyStep(allSteps[stepIdx]);
+  stepIdx++;
+  if (stepIdx >= allSteps.length) { finishSim(); return; }
+  if (!paused && running) scheduleNext();
+}
+
+function applyStep(s) {
+  if (s.phase === 1) {
+    setPhase(1);
+    renderTokens(phase1Tokens, s.tokenIdx, s.tokenIdx);
+    renderStack('op-stack', s.opStack, s.opStack.length > 0);
+    renderPostfix(s.output);
+    renderStack('eval-stack', []);
+    document.getElementById('calc-display').textContent = '—';
+    const cls = s.action === 'pop_prec' || s.action === 'flush' ? 'p1 hi' : 'p1';
+    addLog('[P1] ' + s.log, cls);
+  } else {
+    setPhase(2);
+    renderTokens(phase2Tokens, s.tokenIdx, s.tokenIdx);
+    renderStack('eval-stack', s.evalStack, s.evalStack.length > 0);
+    renderStack('op-stack', []);
+    renderPostfix(finalPostfix);
+    if (s.calc) document.getElementById('calc-display').textContent = s.calc;
+    else document.getElementById('calc-display').textContent = '—';
+    const cls = s.action === 'compute' ? 'p2 hi' : 'p2';
+    addLog('[P2] ' + s.log, cls);
+  }
+}
+
+function finishSim() {
+  done = true; running = false;
+  if (autoTimer) clearTimeout(autoTimer);
+
+  // Show all tokens done
+  renderTokens(phase2Tokens, -1, phase2Tokens.length);
+  renderPostfix(finalPostfix);
+  renderStack('op-stack', []);
+
+  // Final result in eval stack
+  const evalBox = document.getElementById('eval-stack');
+  evalBox.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'stack-el result';
+  d.textContent = +finalResult.toFixed(6);
+  evalBox.appendChild(d);
+
+  document.getElementById('res-postfix').textContent = finalPostfix.join(' ');
+  document.getElementById('res-val').textContent = +finalResult.toFixed(6);
+  setStatus('Accepted ✓ — Expression is valid', 'accepted');
+  setPhase(2);
+  addLog('✓ Final result: ' + (+finalResult.toFixed(6)), 'hi');
+
+  document.getElementById('step-btn').disabled  = true;
+  document.getElementById('pause-btn').disabled = true;
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
+  if (!paused && running && !done) scheduleNext();
+}
+
+function resetAll(clearInput=true) {
+  if (autoTimer) clearTimeout(autoTimer);
+  allSteps=[]; stepIdx=0; running=false; paused=false; done=false;
+  phase1Tokens=[]; phase2Tokens=[]; finalPostfix=[]; finalResult=null;
+
+  renderStack('op-stack', []);
+  renderStack('eval-stack', []);
+  document.getElementById('token-row').innerHTML =
+    '<span style="font-size:0.8rem;color:var(--text3);font-family:var(--mono)">Tokens will appear here after starting…</span>';
+  renderPostfix([]);
+  document.getElementById('calc-display').textContent = '—';
+  document.getElementById('log-box').innerHTML =
+    '<span class="placeholder" style="color:var(--text3)">Log will appear here…</span>';
+  document.getElementById('res-postfix').textContent = '—';
+  document.getElementById('res-val').textContent = '—';
+  document.getElementById('phase-banner').innerHTML = '';
+  setStatus('Waiting for input', 'waiting');
+
+  document.getElementById('step-btn').disabled  = true;
+  document.getElementById('pause-btn').disabled = true;
+  document.getElementById('pause-btn').textContent = 'Pause';
+}
+
+function setExpr(v) {
+  document.getElementById('expr-input').value = v;
+}
+</script>
+</body>
+</html>
